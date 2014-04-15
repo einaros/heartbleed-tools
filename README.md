@@ -13,7 +13,7 @@ decrease overhead once a cipher has been found.
 
 Use these tools as you please, but do us all a favor: Solve problems instead of creating them.
 
-Based on works by:
+Inspired by the work and publications of:
 - Jared Stafford
 - Jeremi M Gosney
 - Ben M Murphy 
