@@ -1,7 +1,6 @@
 ## OpenSSL Heartbleed (CVE-2014-0160) vulnerability scanner, data miner and RSA key-restore tools.
 
-Author: Einar Otto Stangvik / @einaros 
-Url: https://hacking.ventures
+Author: Einar Otto Stangvik / @einaros / https://hacking.ventures
 
 Since the cat is long since out of the bag, and others have begun publishing their tools,
 I'm putting mine out there too. Hopefully this amplifies the pressure on those that still
