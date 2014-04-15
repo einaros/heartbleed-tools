@@ -6,7 +6,12 @@ Since the cat is long since out of the bag, and others have begun publishing the
 I'm putting mine out there too. Hopefully this amplifies the pressure on those that still
 haven't patched or upgraded their severs. Others may find the tools of educational value.
 
-Do with them as you please, but do us all a favor: Solve problems instead of creating them.
+Unlike many other Heartbleed PoCs, this tool will supply most possible ciphers in the initial
+ClientHello packet. Whatever cipher the server picks will be used for all subsequent ClientHello
+packets in a dump session. That should ensure proper vulnerability detection, as well as
+decrease overhead once a cipher has been found.
+
+Use these tools as you please, but do us all a favor: Solve problems instead of creating them.
 
 Based on works by:
 - Jared Stafford
