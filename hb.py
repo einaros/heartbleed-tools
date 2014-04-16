@@ -19,6 +19,7 @@ options.add_option('-t', '--threads', type='int', default=1, help='Threads to us
 options.add_option('-l', '--loops', type='int', default=1, help='Number of loops per connect in dump mode (default: 1)')
 options.add_option('--smtphost', type='string', default='starttlstest', help='SMTP hostname (default: starttlstest)')
 options.add_option('-q', '--quiet', action='store_true', default=False, help='Quiet mode (default: false)')
+options.add_option('--timeout', type='float', default=2.5, help='Data timeout in seconds (default: 2.5 sec)')
 options.add_option('-v', '--verbose', action='store_true', default=False, help='Verbose (default: false)')
 
 def make_worker(bleeder, output):
@@ -44,6 +45,7 @@ def main():
       starttls=opts.starttls, 
       loops=opts.loops, 
       verbose=opts.verbose,
+      timeout=opts.timeout,
       smtp_hostname=opts.smtphost)
   if opts.dump:
     signal.signal(signal.SIGINT, lambda s,f: sys.exit())
