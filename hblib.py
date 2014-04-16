@@ -60,12 +60,12 @@ def recv_len(s, length, timeout):
   return rdata
 
 def init_starttls(s, smtp_hostname, verbose, timeout):
-  found,buf = recv_until(s, '220 ', timeout)
+  found,buf = recv_until(s, b'220 ', timeout)
   if verbose:
     print('> %s'%buf)
   if not found: return False
   if b'Microsoft' in buf: return False
-  s.send(b'ehlo %s\r\n'%smtp_hostname)
+  s.send(b'ehlo ' + bytes(smtp_hostname, encoding='ascii') + b'\r\n')
   found,buf = recv_until(s, b'STARTTLS', timeout)
   if verbose:
     print('> %s'%buf)
