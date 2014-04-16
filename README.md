@@ -21,6 +21,9 @@ Inspired by the work and publications of:
 
 ### Usage:
 
+Here seen recovering one of the RSA primes of the CloudFlare challenge 34 times in one minute. That equals getting the full private key 34 times in one minute.
+![img](https://i.imgur.com/zfEBObE.png)
+
 ```
 # Test vulnerability
 $ ./hb.py -p 4433 localhost
