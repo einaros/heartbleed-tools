@@ -17,6 +17,7 @@ options.add_option('-s', '--starttls', action='store_true', default=False, help=
 options.add_option('-d', '--dump', action='store_true', default=False, help='Use dump mode (default: false)')
 options.add_option('-t', '--threads', type='int', default=1, help='Threads to use in dump mode (default: 1)')
 options.add_option('-l', '--loops', type='int', default=1, help='Number of loops per connect in dump mode (default: 1)')
+options.add_option('-u', '--unobtrusive', action='store_true', default=False, help='Dump a single byte only for vulnerable hosts (default: false)')
 options.add_option('--smtphost', type='string', default='starttlstest', help='SMTP hostname (default: starttlstest)')
 options.add_option('-q', '--quiet', action='store_true', default=False, help='Quiet mode (default: false)')
 options.add_option('--timeout', type='float', default=2.5, help='Data timeout in seconds (default: 2.5 sec)')
@@ -46,6 +47,7 @@ def main():
       loops=opts.loops, 
       verbose=opts.verbose,
       timeout=opts.timeout,
+      unobtrusive=opts.unobtrusive,
       smtp_hostname=opts.smtphost)
   if opts.dump:
     signal.signal(signal.SIGINT, lambda s,f: sys.exit())
