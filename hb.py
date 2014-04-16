@@ -65,10 +65,12 @@ def main():
       if not opts.quiet and opts.verbose:
         hexdump(data)
       if opts.output is not None:
-        print('Writing data to: %s'%opts.output)
+        if not opts.quiet:
+          print('Writing data dump to: %s'%opts.output)
         with open(opts.output, 'wb') as f:
           f.write(data) 
-    print('%s:%s is %s'%(args[0], opts.port, 'vulnerable' if vulnerable else 'safe'))
+    if not opts.quiet:
+      print('%s:%s is %s'%(args[0], opts.port, 'vulnerable' if vulnerable else 'safe'))
     return 0 if vulnerable else 1
 
 if __name__ == '__main__':
