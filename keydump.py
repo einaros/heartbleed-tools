@@ -50,7 +50,7 @@ def main(cert_path, data_path, offset):
     print('Prime in greppable ascii: %s\n'%hexbytes)
     p = gmpy.mpz(p)
     e = gmpy.mpz(65537)
-    q = gmpy.mpz(mod / p)
+    q = gmpy.divexact(mod,p)
     phi = (p-1) * (q-1)
     d = gmpy.invert(e, phi)
     dp = d % (p - 1)
